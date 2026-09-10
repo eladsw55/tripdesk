@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TripDesk — ניהול לידים לסוכני נסיעות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&family=Rubik:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root{
+  --bg:#EAF0F4;
+  --surface:#FFFFFF;
+  --surface-2:#F6F9FB;
+  --ink:#132430;
+  --ink-2:#4A5D6B;
+  --muted:#8496A3;
+  --line:#E2E9EF;
+  --line-strong:#CDD8E0;
+
+  --primary:#0E3F52;
+  --primary-600:#134E64;
+  --primary-700:#0A3040;
+  --accent:#12A69B;
+  --accent-soft:#E1F4F2;
+
+  --radius:14px;
+  --radius-sm:10px;
+  --radius-lg:20px;
+  --shadow-sm:0 1px 2px rgba(19,36,48,.06), 0 1px 3px rgba(19,36,48,.05);
+  --shadow-md:0 4px 14px rgba(19,36,48,.08);
+  --shadow-lg:0 18px 50px rgba(19,36,48,.18);
+
+  --sidebar-w:242px;
+  --font:'Assistant',system-ui,sans-serif;
+  --font-head:'Rubik','Assistant',sans-serif;
+}
+
+.s-new     {--c:#2563EB;--cbg:#E7EEFE;}
+.s-active  {--c:#D97706;--cbg:#FDF0DC;}
+.s-quote   {--c:#7C3AED;--cbg:#F0E9FE;}
+.s-waiting {--c:#0891B2;--cbg:#DDF3F8;}
+.s-won     {--c:#059669;--cbg:#DCF5EC;}
+.s-lost    {--c:#64748B;--cbg:#EDF1F4;}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--ink);
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
+h1,h2,h3,h4{font-family:var(--font-head);font-weight:600;line-height:1.25}
+::selection{background:var(--accent-soft)}
+
+/* LAYOUT */
+.app{display:flex;min-height:100vh}
+.sidebar{
+  width:var(--sidebar-w);flex-shrink:0;background:var(--primary);color:#DCE7EC;
+  display:flex;flex-direction:column;padding:22px 16px;position:sticky;top:0;height:100vh;
+}
+.brand{display:flex;align-items:center;gap:11px;padding:6px 8px 22px}
+.brand-mark{
+  width:38px;height:38px;border-radius:11px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),#0FBFA9);
+  display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px rgba(18,166,155,.4);
+}
+.brand-name{font-family:var(--font-head);font-weight:700;font-size:19px;color:#fff;letter-spacing:.2px}
+.brand-sub{font-size:11.5px;color:#89AAB6;margin-top:-2px}
+.nav{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.nav-item{
+  display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:11px;
+  color:#B9CDD6;font-weight:500;font-size:15px;transition:background .15s,color .15s;
+  text-align:right;width:100%;
+}
+.nav-item svg{width:19px;height:19px;flex-shrink:0;opacity:.9}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(18,166,155,.35)}
+.nav-item .badge-count{
+  margin-inline-start:auto;background:rgba(255,255,255,.16);color:#fff;font-size:12px;
+  font-weight:600;border-radius:20px;min-width:22px;height:20px;padding:0 7px;display:grid;place-items:center;
+}
+.nav-item.active .badge-count{background:rgba(255,255,255,.25)}
+.sidebar-foot{margin-top:auto;padding:14px 10px 4px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:#7D9BA8}
+.sidebar-foot b{color:#B9CDD6;font-weight:600;display:block;margin-bottom:2px}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{
+  background:var(--surface);border-bottom:1px solid var(--line);padding:16px 30px;
+  display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:20;
+}
+.topbar h1{font-size:21px}
+.topbar .sub{color:var(--muted);font-size:13.5px;margin-top:1px}
+.content{padding:26px 30px 60px;max-width:1400px;width:100%;margin:0 auto;flex:1}
+
+/* BUTTONS */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;
+  border-radius:11px;font-weight:600;font-size:14.5px;
+  transition:transform .08s,box-shadow .15s,background .15s,border-color .15s;white-space:nowrap;
+}
+.btn:active{transform:translateY(1px)}
+.btn svg{width:18px;height:18px}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:var(--shadow-sm)}
+.btn-primary:hover{background:var(--primary-600)}
+.btn-accent{background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(18,166,155,.3)}
+.btn-accent:hover{background:#0F958B}
+.btn-ghost{background:var(--surface);color:var(--ink-2);border:1px solid var(--line-strong)}
+.btn-ghost:hover{border-color:var(--muted);color:var(--ink)}
+.btn-wa{background:#25D366;color:#fff}
+.btn-wa:hover{background:#1EB855}
+.btn-danger{background:#EF4444;color:#fff}
+.btn-danger:hover{background:#DC2626}
+.btn-sm{padding:7px 12px;font-size:13.5px;border-radius:9px}
+.btn-icon{
+  width:36px;height:36px;padding:0;border-radius:10px;flex-shrink:0;display:grid;place-items:center;
+  background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line);
+}
+.btn-icon:hover{background:#fff;color:var(--ink);border-color:var(--line-strong)}
+.btn-icon svg{width:18px;height:18px}
+
+/* STAT CARDS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:8px}
+.stat{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+}
+.stat-label{color:var(--ink-2);font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px}
+.stat-label svg{width:17px;height:17px;color:var(--muted)}
+.stat-value{font-family:var(--font-head);font-size:32px;font-weight:700;margin-top:6px;color:var(--primary);letter-spacing:-.5px}
+.stat.accent .stat-value{color:var(--accent)}
+.stat.money .stat-value{font-size:27px}
+.stat-hint{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* TOOLBAR */
+.toolbar{
+  display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px 14px;box-shadow:var(--shadow-sm);
+}
+.search{position:relative;flex:1;min-width:220px}
+.search svg{position:absolute;right:13px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted)}
+.search input{
+  width:100%;padding:10px 40px 10px 14px;border:1px solid var(--line-strong);border-radius:10px;
+  background:var(--surface-2);transition:border-color .15s,background .15s;
+}
+.search input:focus{outline:none;border-color:var(--accent);background:#fff}
+.select-wrap{position:relative}
+.select-wrap select{
+  appearance:none;padding:10px 34px 10px 14px;border:1px solid var(--line-strong);border-radius:10px;
+  background:var(--surface-2);cursor:pointer;font-weight:500;color:var(--ink-2);
+}
+.select-wrap select:focus{outline:none;border-color:var(--accent)}
+.select-wrap::after{content:"";position:absolute;left:13px;top:50%;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+
+/* LEADS */
+.lead-head{display:grid;grid-template-columns:1.6fr 1.1fr .9fr 1.15fr 1fr auto;gap:14px;padding:0 18px 10px;color:var(--muted);font-size:12.5px;font-weight:600}
+.lead-list{display:flex;flex-direction:column;gap:10px}
+.lead-row{
+  display:grid;grid-template-columns:1.6fr 1.1fr .9fr 1.15fr 1fr auto;gap:14px;align-items:center;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 18px;
+  box-shadow:var(--shadow-sm);cursor:pointer;transition:box-shadow .15s,border-color .15s,transform .08s;position:relative;
+}
+.lead-row:hover{box-shadow:var(--shadow-md);border-color:var(--line-strong)}
+.lead-row::before{content:"";position:absolute;inset-inline-start:0;top:12px;bottom:12px;width:4px;border-radius:4px;background:transparent}
+.lead-row.due-today::before{background:var(--accent)}
+.lead-row.overdue::before{background:#EF4444}
+.cust{min-width:0}
+.cust-name{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
+.cust-meta{color:var(--muted);font-size:13px;margin-top:2px;display:flex;align-items:center;gap:6px}
+.src-chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+.cell-label{display:none}
+.cell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;color:var(--ink-2)}
+.cell b{color:var(--ink);font-weight:600}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;font-size:12.5px;font-weight:600;background:var(--cbg);color:var(--c);white-space:nowrap}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.follow{font-size:13.5px;font-weight:600;display:flex;flex-direction:column;gap:1px}
+.follow .tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;width:fit-content}
+.follow.overdue .tag{background:#FDE4E4;color:#DC2626}
+.follow.today .tag{background:var(--accent-soft);color:#0C7A72}
+.follow .date{color:var(--ink-2)}
+.follow.none{color:var(--muted);font-weight:500}
+.row-actions{display:flex;align-items:center;gap:6px}
+.menu-wrap{position:relative}
+.menu{position:absolute;inset-inline-end:0;top:calc(100% + 6px);z-index:30;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;min-width:170px;display:none}
+.menu.open{display:block;animation:pop .12s ease}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.menu button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:8px;font-size:14px;color:var(--ink-2);font-weight:500;text-align:right}
+.menu button:hover{background:var(--surface-2);color:var(--ink)}
+.menu button.danger{color:#DC2626}
+.menu button.danger:hover{background:#FDECEC}
+.menu button svg{width:17px;height:17px}
+.menu-sep{height:1px;background:var(--line);margin:5px 4px}
+
+/* EMPTY */
+.empty{text-align:center;padding:70px 24px;background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--radius-lg)}
+.empty .ico{width:64px;height:64px;border-radius:18px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;margin:0 auto 18px}
+.empty .ico svg{width:30px;height:30px}
+.empty h3{font-size:19px;margin-bottom:7px}
+.empty p{color:var(--muted);max-width:380px;margin:0 auto 22px}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px}
+.section-title{font-size:16px;color:var(--ink-2);font-weight:600;margin:28px 4px 14px}
+.gauge-card{grid-column:span 2;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:24px;display:flex;align-items:center;gap:26px}
+.gauge{position:relative;width:132px;height:132px;flex-shrink:0}
+.gauge svg{transform:rotate(-90deg)}
+.gauge .num{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-head);font-weight:700;font-size:30px;color:var(--primary)}
+.gauge-info h4{font-size:16px;margin-bottom:6px}
+.gauge-info p{color:var(--muted);font-size:13.5px;line-height:1.6}
+.status-break{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:22px;grid-column:span 2}
+.status-break h4{margin-bottom:16px;font-size:16px}
+.sbar{margin-bottom:13px}
+.sbar-top{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:5px}
+.sbar-track{height:8px;background:var(--surface-2);border-radius:20px;overflow:hidden}
+.sbar-fill{height:100%;border-radius:20px;transition:width .4s ease}
+
+/* MODAL & DRAWER */
+.overlay{position:fixed;inset:0;background:rgba(19,36,48,.42);backdrop-filter:blur(2px);z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.show{opacity:1;pointer-events:auto}
+.modal{position:fixed;inset:0;z-index:101;display:grid;place-items:center;padding:24px;pointer-events:none}
+.modal-box{
+  background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);
+  width:100%;max-width:600px;max-height:90vh;display:flex;flex-direction:column;
+  opacity:0;transform:translateY(14px) scale(.98);transition:opacity .2s,transform .2s;pointer-events:auto;
+}
+.modal.show .modal-box{opacity:1;transform:none}
+.modal-box.narrow{max-width:440px}
+.modal-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.modal-head h3{font-size:19px}
+.modal-body{padding:22px 24px;overflow-y:auto}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-start}
+.x-btn{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--muted)}
+.x-btn:hover{background:var(--surface-2);color:var(--ink)}
+.drawer{
+  position:fixed;top:0;bottom:0;inset-inline-end:0;width:460px;max-width:92vw;z-index:101;
+  background:var(--surface);box-shadow:var(--shadow-lg);
+  transform:translateX(-100%);transition:transform .26s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;
+}
+.drawer.show{transform:none}
+.drawer-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.drawer-head h3{font-size:20px}
+.drawer-head .ph{color:var(--muted);font-size:14px;margin-top:3px}
+.drawer-body{padding:20px 24px;overflow-y:auto;flex:1}
+.drawer-foot{padding:14px 24px;border-top:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin-top:18px}
+.dfield{background:var(--surface-2);border-radius:11px;padding:11px 14px}
+.dfield.full{grid-column:span 2}
+.dfield .k{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:3px}
+.dfield .v{font-size:15px;color:var(--ink);font-weight:500;word-break:break-word}
+.dfield .v.empty-v{color:var(--muted);font-weight:400}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:span 2}
+.field label{font-size:13.5px;font-weight:600;color:var(--ink-2)}
+.field label .req{color:#EF4444}
+.field input,.field select,.field textarea{
+  padding:10px 13px;border:1px solid var(--line-strong);border-radius:10px;
+  background:var(--surface-2);transition:border-color .15s,background .15s;width:100%;
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);background:#fff}
+.field textarea{resize:vertical;min-height:74px}
+.field select{appearance:none;cursor:pointer}
+.hint{font-size:12px;color:var(--muted)}
+.wa-preview{background:#E5F3EA;border:1px solid #BFE3CC;border-radius:14px;padding:16px 18px;white-space:pre-wrap;font-size:14.5px;line-height:1.7;color:#0B2E1A;max-height:280px;overflow-y:auto;position:relative}
+.wa-preview::before{content:"תצוגה מקדימה";position:absolute;top:-11px;inset-inline-end:14px;background:#25D366;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:8px}
+
+/* TOASTS */
+.toasts{position:fixed;bottom:22px;inset-inline-start:22px;z-index:200;display:flex;flex-direction:column;gap:10px}
+.toast{background:var(--primary-700);color:#fff;padding:12px 18px;border-radius:12px;box-shadow:var(--shadow-lg);font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:10px;animation:toastIn .25s ease;min-width:200px}
+.toast svg{width:19px;height:19px;flex-shrink:0}
+.toast.ok{background:#0C7A5E}
+.toast.info{background:var(--primary-700)}
+.toast.warn{background:#B45309}
+@keyframes toastIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.toast.out{animation:toastOut .25s ease forwards}
+@keyframes toastOut{to{opacity:0;transform:translateX(-30px)}}
+
+/* PANELS */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:24px;max-width:640px}
+.panel + .panel{margin-top:18px}
+.panel h3{font-size:17px;margin-bottom:6px}
+.panel p.desc{color:var(--muted);font-size:13.5px;margin-bottom:18px;line-height:1.6}
+.info-note{background:#FEF6E7;border:1px solid #F5E0B0;border-radius:12px;padding:14px 16px;font-size:13.5px;color:#8A5A00;display:flex;gap:10px;align-items:flex-start;margin-bottom:20px;line-height:1.6}
+.info-note svg{width:19px;height:19px;flex-shrink:0;margin-top:1px}
+.backup-meta{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2);margin-bottom:18px;font-weight:500}
+.backup-meta svg{width:16px;height:16px;color:var(--accent)}
+
+@media(max-width:1100px){.stats,.dash-grid,.kpi-grid{grid-template-columns:repeat(2,1fr)}.gauge-card,.status-break{grid-column:span 2}}
+@media(max-width:860px){
+  .lead-head{display:none}
+  .lead-row{grid-template-columns:1fr;gap:9px}
+  .cell-label{display:inline;color:var(--muted);font-size:12px;font-weight:600;margin-inline-end:6px}
+  .row-actions{justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">TripDesk</div>
+        <div class="brand-sub">ניהול לידים לסוכני נסיעות</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="nav-item active" data-view="leads">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>לידים</span><span class="badge-count" id="cnt-leads">0</span>
+      </button>
+      <button class="nav-item" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-view="closed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10.01-3-3"/></svg>
+        <span>עסקאות שנסגרו</span><span class="badge-count" id="cnt-closed">0</span>
+      </button>
+      <button class="nav-item" data-view="deleted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <span>נמחקו לאחרונה</span><span class="badge-count" id="cnt-deleted">0</span>
+      </button>
+      <button class="nav-item" data-view="backup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>גיבוי ושחזור</span>
+      </button>
+      <button class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>הגדרות</span>
+      </button>
+    </nav>
+    <div class="sidebar-foot">
+      <b id="foot-agent">הסוכן שלך</b>
+      <span id="foot-biz">הגדר את פרטי העסק בהגדרות</span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="flex:1">
+        <h1 id="page-title">לידים</h1>
+        <div class="sub" id="page-sub">כל הלקוחות שלך במקום אחד</div>
+      </div>
+      <button class="btn btn-accent" id="btn-new-top">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        ליד חדש
+      </button>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="modal" id="modal"><div class="modal-box" id="modal-box"></div></div>
+<div class="drawer" id="drawer"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ============================================================
+   1. DATA LAYER — versioned storage + migration (v1 -> v2)
+   ============================================================ */
+const STORAGE_KEY = 'travelAgentCRM_v1';   /* unchanged — keeps existing data */
+const SCHEMA_VERSION = 2;
+
+const STATUSES = [
+  {id:'new',     label:'חדש',        cls:'s-new'},
+  {id:'active',  label:'בטיפול',      cls:'s-active'},
+  {id:'quote',   label:'הצעה נשלחה',  cls:'s-quote'},
+  {id:'waiting', label:'ממתין ללקוח', cls:'s-waiting'},
+  {id:'won',     label:'נסגר',        cls:'s-won'},
+  {id:'lost',    label:'לא נסגר',     cls:'s-lost'},
+];
+const statusById = id => STATUSES.find(s=>s.id===id) || STATUSES[0];
+const SOURCES = ['WhatsApp','Facebook','Instagram','המלצה','אתר','אחר'];
+
+/* Accommodation types — stars only for hotel & resort */
+const ACC_TYPES = [
+  {id:'hotel',        label:'מלון',       emoji:'🏨', stars:true},
+  {id:'apartment',    label:'דירת אירוח', emoji:'🏡', stars:false},
+  {id:'villa',        label:'וילה',       emoji:'🏡', stars:false},
+  {id:'vacation_unit',label:'יחידת נופש', emoji:'🏡', stars:false},
+  {id:'cabin',        label:'צימר',       emoji:'🏡', stars:false},
+  {id:'resort',       label:'ריזורט',     emoji:'🏨', stars:true},
+  {id:'hostel',       label:'הוסטל',      emoji:'🏠', stars:false},
+  {id:'none',         label:'ללא אירוח',  emoji:'',   stars:false},
+  {id:'other',        label:'אחר',        emoji:'🏡', stars:false},
+];
+const accMeta = id => ACC_TYPES.find(a=>a.id===id) || ACC_TYPES[0];
+const ACC_DESC_SUGGEST = ['יוקרתי','מרכזי','מול הים','עם בריכה פרטית','מתאים למשפחות','Adults Only','קרוב לבית חב״ד'];
+
+/* Storage: localStorage when available (real use / deploy), memory fallback in sandbox */
+const Storage = (() => {
+  let usable=false, mem=null;
+  try{ const t='__t'; localStorage.setItem(t,'1'); localStorage.removeItem(t); usable=true; }catch(e){ usable=false; }
+  return {
+    persistent:usable,
+    read(){ if(usable){ try{ return localStorage.getItem(STORAGE_KEY); }catch(e){ return mem; } } return mem; },
+    write(str){ if(usable){ try{ localStorage.setItem(STORAGE_KEY,str); return; }catch(e){} } mem=str; }
+  };
+})();
+
+function defaultData(){
+  return {
+    version:SCHEMA_VERSION,
+    leads:[],
+    deletedLeads:[],
+    settings:{agentName:'',businessName:'',whatsapp:'',quoteName:''},
+    meta:{lastBackupAt:null}
+  };
+}
+
+/* Adds the new v2 fields to any lead that predates them */
+function upgradeLead(l){
+  if(!('quoteSent' in l)) l.quoteSent=false;
+  if(!('quoteCount' in l)) l.quoteCount=0;
+  if(!('lastQuoteSentAt' in l)) l.lastQuoteSentAt=null;
+  if(!('dealValue' in l)) l.dealValue='';
+  if(!l.quote) l.quote={accommodationType:'hotel',accommodationName:'',accommodationDescription:''};
+  return l;
+}
+
+/* Migration never wipes existing data — only fills in missing fields */
+function migrate(data){
+  if(!data || typeof data!=='object') return defaultData();
+  if(!('version' in data)) data.version = 1;
+  data.leads        = Array.isArray(data.leads)?data.leads:[];
+  data.deletedLeads = Array.isArray(data.deletedLeads)?data.deletedLeads:[];
+  data.settings     = Object.assign(defaultData().settings, data.settings||{});
+  data.meta         = Object.assign(defaultData().meta, data.meta||{});
+
+  if(data.version < 2){
+    data.leads.forEach(upgradeLead);
+    data.deletedLeads.forEach(upgradeLead);
+    if(!('lastBackupAt' in data.meta)) data.meta.lastBackupAt = null;
+    data.version = 2;
+  }
+  /* future: if(data.version < 3){ ... ; data.version = 3; } */
+
+  data.version = SCHEMA_VERSION;
+  return data;
+}
+
+let DATA;
+function load(){
+  const raw = Storage.read();
+  if(!raw){ DATA = defaultData(); return; }
+  try{ DATA = migrate(JSON.parse(raw)); }catch(e){ DATA = defaultData(); }
+}
+function save(){ Storage.write(JSON.stringify(DATA)); }
+
+function newLead(payload){
+  return Object.assign({
+    id:uid(), createdAt:new Date().toISOString(),
+    quoteSent:false, quoteCount:0, lastQuoteSentAt:null, dealValue:'',
+    quote:{accommodationType:'hotel',accommodationName:'',accommodationDescription:''}
+  }, payload);
+}
+
+/* ============================================================
+   2. HELPERS
+   ============================================================ */
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const uid = ()=> 'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc = s => (s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const todayISO = ()=> new Date().toISOString().slice(0,10);
+
+function fmtDate(iso){
+  if(!iso) return '';
+  const d=new Date(iso+'T00:00:00'); if(isNaN(d)) return iso;
+  return d.toLocaleDateString('he-IL',{day:'numeric',month:'short',year:'numeric'});
+}
+function fmtShort(iso){
+  if(!iso) return '';
+  const d=new Date(iso+'T00:00:00'); if(isNaN(d)) return iso;
+  return d.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
+}
+function fmtDateTime(iso){
+  if(!iso) return '';
+  const d=new Date(iso); if(isNaN(d)) return '';
+  const p=n=>String(n).padStart(2,'0');
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function numVal(v){ return Number(String(v??'').replace(/[^\d.]/g,''))||0; }
+function fmtMoney(v){
+  const n = numVal(v);
+  if(n===0) return (v===''||v==null)?'' : String(v);
+  return n.toLocaleString('he-IL')+' ₪';
+}
+function fmtShekel(n){ return (Number(n)||0).toLocaleString('he-IL')+' ₪'; }
+function daysBetween(iso){
+  const d=new Date(iso+'T00:00:00'), t=new Date(todayISO()+'T00:00:00');
+  return Math.round((d-t)/86400000);
+}
+function waNumber(phone){
+  let n=(phone||'').replace(/[^\d]/g,'');
+  if(!n) return '';
+  if(n.startsWith('972')) return n;
+  if(n.startsWith('0')) return '972'+n.slice(1);
+  return n;
+}
+function toast(msg, type='ok'){
+  const el=document.createElement('div'); el.className='toast '+type;
+  const icons={
+    ok:'<path d="M20 6 9 17l-5-5"/>',
+    info:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+    warn:'<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
+  };
+  el.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${icons[type]||icons.ok}</svg><span>${esc(msg)}</span>`;
+  $('#toasts').appendChild(el);
+  setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),250); },2600);
+}
+
+/* ============================================================
+   3. STATS
+   ============================================================ */
+function computeStats(){
+  const leads=DATA.leads;
+  const total=leads.length;
+  const active=leads.filter(l=>['active','quote','waiting'].includes(l.status)).length;
+  const won =leads.filter(l=>l.status==='won').length;
+  const lost=leads.filter(l=>l.status==='lost').length;
+  const decided=won+lost;
+  const rate=decided?Math.round(won/decided*100):0;
+  const now=new Date(), monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const newThisMonth=leads.filter(l=>new Date(l.createdAt)>=monthStart).length;
+  const quotesSent=leads.filter(l=>l.quoteSent).length;              /* unique leads with >=1 quote */
+  const wonValue=leads.filter(l=>l.status==='won').reduce((s,l)=>s+numVal(l.dealValue),0);
+  return {total,active,won,lost,decided,rate,newThisMonth,quotesSent,wonValue};
+}
+function followState(l){
+  if(l.status==='won'||l.status==='lost'||!l.followUp) return {kind:'none'};
+  const d=daysBetween(l.followUp);
+  if(d<0) return {kind:'overdue',days:d};
+  if(d===0) return {kind:'today'};
+  return {kind:'future',days:d};
+}
+
+/* ============================================================
+   4. VIEW ROUTING
+   ============================================================ */
+let currentView='leads';
+const filters={q:'',status:'',dest:'',sort:'attention'};
+
+function setView(v){
+  currentView=v;
+  $$('#nav .nav-item').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  const titles={
+    leads:['לידים','כל הלקוחות שלך במקום אחד'],
+    dashboard:['Dashboard','סטטיסטיקות ותובנות על העבודה שלך'],
+    closed:['עסקאות שנסגרו','הלקוחות שהפכו לעסקה'],
+    deleted:['נמחקו לאחרונה','שחזור לידים שנמחקו בטעות'],
+    backup:['גיבוי ושחזור','הנתונים שלך נשמרים במכשיר הזה'],
+    settings:['הגדרות','פרטי הסוכן והעסק']
+  };
+  $('#page-title').textContent=titles[v][0];
+  $('#page-sub').textContent=titles[v][1];
+  $('#btn-new-top').style.display=(v==='backup'||v==='settings'||v==='deleted')?'none':'';
+  render();
+}
+function render(){
+  refreshCounts();
+  const c=$('#content');
+  if(currentView==='leads'){ c.innerHTML=''; renderStats(c); renderToolbar(c); renderLeadList(c,getVisibleLeads()); }
+  else if(currentView==='dashboard') renderDashboard(c);
+  else if(currentView==='closed'){ c.innerHTML=''; renderToolbar(c,true); renderLeadList(c,getVisibleLeads(true),true); }
+  else if(currentView==='deleted') renderDeleted(c);
+  else if(currentView==='backup') renderBackup(c);
+  else if(currentView==='settings') renderSettings(c);
+}
+function refreshCounts(){
+  const s=computeStats();
+  $('#cnt-leads').textContent=DATA.leads.length;
+  $('#cnt-closed').textContent=s.won;
+  $('#cnt-deleted').textContent=DATA.deletedLeads.length;
+  const set=DATA.settings;
+  $('#foot-agent').textContent=set.agentName||'הסוכן שלך';
+  $('#foot-biz').textContent=set.businessName||'הגדר את פרטי העסק בהגדרות';
+}
+
+/* ============================================================
+   5. STAT CARDS
+   ============================================================ */
+const STAT_ICONS={
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+  activity:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  check:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10.01-3-3"/>',
+  send:'<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+  money:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'
+};
+function renderStats(c){
+  const s=computeStats();
+  const wrap=document.createElement('div'); wrap.className='stats';
+  wrap.innerHTML=`
+    ${statCard('סה"כ לידים',s.total,'users')}
+    ${statCard('בטיפול',s.active,'activity')}
+    ${statCard('נסגרו',s.won,'check')}
+    ${rateCard(s.rate,s.decided)}`;
+  c.appendChild(wrap);
+}
+function statCard(label,val,icon){
+  return `<div class="stat">
+    <div class="stat-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${STAT_ICONS[icon]}</svg>${label}</div>
+    <div class="stat-value">${val}</div>
+  </div>`;
+}
+function moneyCard(label,val){
+  return `<div class="stat money accent">
+    <div class="stat-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${STAT_ICONS.money}</svg>${label}</div>
+    <div class="stat-value">${fmtShekel(val)}</div>
+  </div>`;
+}
+function rateCard(rate,decided){
+  return `<div class="stat accent">
+    <div class="stat-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>אחוז הצלחה</div>
+    <div class="stat-value">${rate}%</div>
+    <div class="stat-hint">${decided?`מתוך ${decided} לידים שהגיעו להחלטה`:'עדיין אין לידים שנסגרו'}</div>
+  </div>`;
+}
+
+/* ============================================================
+   6. TOOLBAR
+   ============================================================ */
+function renderToolbar(c,isClosed=false){
+  const dests=[...new Set(DATA.leads.map(l=>l.destination).filter(Boolean))].sort();
+  const bar=document.createElement('div'); bar.className='toolbar';
+  bar.innerHTML=`
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="f-q" type="search" placeholder="חיפוש לפי שם, טלפון או יעד…" value="${esc(filters.q)}">
+    </div>
+    ${isClosed?'':`<div class="select-wrap">
+      <select id="f-status"><option value="">כל הסטטוסים</option>
+        ${STATUSES.map(s=>`<option value="${s.id}" ${filters.status===s.id?'selected':''}>${s.label}</option>`).join('')}
+      </select></div>`}
+    <div class="select-wrap">
+      <select id="f-dest"><option value="">כל היעדים</option>
+        ${dests.map(d=>`<option value="${esc(d)}" ${filters.dest===d?'selected':''}>${esc(d)}</option>`).join('')}
+      </select></div>
+    <div class="select-wrap">
+      <select id="f-sort">
+        <option value="attention" ${filters.sort==='attention'?'selected':''}>דורש טיפול קודם</option>
+        <option value="newest" ${filters.sort==='newest'?'selected':''}>חדשים ביותר</option>
+        <option value="followup" ${filters.sort==='followup'?'selected':''}>תאריך חזרה</option>
+        <option value="status" ${filters.sort==='status'?'selected':''}>סטטוס</option>
+        <option value="dest" ${filters.sort==='dest'?'selected':''}>יעד</option>
+      </select></div>
+    <button class="btn btn-primary" id="btn-new-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      ליד חדש
+    </button>`;
+  c.appendChild(bar);
+  $('#f-q').addEventListener('input',e=>{filters.q=e.target.value;rerenderList(isClosed);});
+  if($('#f-status')) $('#f-status').addEventListener('change',e=>{filters.status=e.target.value;rerenderList(isClosed);});
+  $('#f-dest').addEventListener('change',e=>{filters.dest=e.target.value;rerenderList(isClosed);});
+  $('#f-sort').addEventListener('change',e=>{filters.sort=e.target.value;rerenderList(isClosed);});
+  $('#btn-new-bar').addEventListener('click',()=>openLeadForm());
+}
+function rerenderList(isClosed){
+  const old=$('#lead-container'); if(old) old.remove();
+  renderLeadList($('#content'),getVisibleLeads(isClosed),isClosed);
+}
+
+/* ============================================================
+   7. FILTER + SORT
+   ============================================================ */
+function getVisibleLeads(isClosed=false){
+  let list=DATA.leads.slice();
+  if(isClosed) list=list.filter(l=>l.status==='won');
+  const q=filters.q.trim().toLowerCase();
+  if(q) list=list.filter(l=>
+    (l.name||'').toLowerCase().includes(q)||
+    (l.phone||'').toLowerCase().includes(q)||
+    (l.destination||'').toLowerCase().includes(q));
+  if(!isClosed && filters.status) list=list.filter(l=>l.status===filters.status);
+  if(filters.dest) list=list.filter(l=>l.destination===filters.dest);
+
+  const statusOrder={new:0,active:1,quote:2,waiting:3,won:4,lost:5};
+  const attentionRank=l=>{
+    const f=followState(l);
+    if(f.kind==='overdue') return 0;
+    if(f.kind==='today') return 1;
+    if(['new','active','waiting','quote'].includes(l.status)) return 2;
+    return 3;
+  };
+  list.sort((a,b)=>{
+    switch(filters.sort){
+      case 'newest': return new Date(b.createdAt)-new Date(a.createdAt);
+      case 'followup': if(!a.followUp) return 1; if(!b.followUp) return -1; return new Date(a.followUp)-new Date(b.followUp);
+      case 'status': return statusOrder[a.status]-statusOrder[b.status];
+      case 'dest': return (a.destination||'').localeCompare(b.destination||'','he');
+      default:{ const ra=attentionRank(a),rb=attentionRank(b); if(ra!==rb) return ra-rb; return new Date(b.createdAt)-new Date(a.createdAt); }
+    }
+  });
+  return list;
+}
+
+/* ============================================================
+   8. LEAD LIST
+   ============================================================ */
+function renderLeadList(c,list,isClosed=false){
+  const container=document.createElement('div'); container.id='lead-container';
+  if(list.length===0){
+    container.innerHTML=emptyState(isClosed);
+    c.appendChild(container);
+    if($('#empty-add')) $('#empty-add').addEventListener('click',()=>openLeadForm());
+    return;
+  }
+  const head=`<div class="lead-head"><div>לקוח</div><div>יעד ותאריכים</div><div>מקור</div><div>סטטוס</div><div>חזרה / עסקה</div><div></div></div>`;
+  container.innerHTML=head+`<div class="lead-list">${list.map(rowHTML).join('')}</div>`;
+  c.appendChild(container);
+  bindRows(container);
+}
+function emptyState(isClosed){
+  if(isClosed) return `<div class="empty">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10.01-3-3"/></svg></div>
+    <h3>אין עדיין עסקאות שנסגרו</h3>
+    <p>כשתסמן ליד כ"נסגר", הוא יופיע כאן כדי שתוכל לעקוב אחרי ההצלחות שלך.</p></div>`;
+  if(filters.q||filters.status||filters.dest) return `<div class="empty">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+    <h3>לא נמצאו לידים</h3><p>נסה לשנות את החיפוש או לאפס את הפילטרים.</p></div>`;
+  return `<div class="empty">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></div>
+    <h3>אין לך עדיין לידים</h3>
+    <p>הוסף את הליד הראשון שלך והתחל לנהל את הלקוחות במקום אחד.</p>
+    <button class="btn btn-accent" id="empty-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>הוסף ליד</button></div>`;
+}
+function rowHTML(l){
+  const st=statusById(l.status);
+  const f=followState(l);
+  let followHTML;
+  if(l.status==='won'){
+    followHTML = l.dealValue
+      ? `<div class="follow today"><span class="tag">עסקה</span><span class="date">${esc(fmtMoney(l.dealValue))}</span></div>`
+      : `<div class="follow none">נסגר</div>`;
+  } else if(f.kind==='overdue') followHTML=`<div class="follow overdue"><span class="tag">באיחור</span><span class="date">${fmtDate(l.followUp)}</span></div>`;
+  else if(f.kind==='today') followHTML=`<div class="follow today"><span class="tag">היום</span><span class="date">${fmtDate(l.followUp)}</span></div>`;
+  else if(f.kind==='future') followHTML=`<div class="follow"><span class="date">${fmtDate(l.followUp)}</span></div>`;
+  else followHTML=`<div class="follow none">—</div>`;
+
+  const rowCls=(l.status!=='won'&&f.kind==='overdue')?'overdue':((l.status!=='won'&&f.kind==='today')?'due-today':'');
+  const datesStr=[l.dateFrom,l.dateTo].filter(Boolean).map(fmtShort).join(' – ');
+  const quoteMark = l.quoteSent ? `<span class="src-chip" title="נשלחה הצעה" style="background:#F0E9FE;color:#7C3AED;border-color:#E4D8FB">הצעה ✓</span>` : '';
+
+  return `<div class="lead-row ${rowCls}" data-id="${l.id}">
+    <div class="cust">
+      <div class="cust-name">${esc(l.name||'ללא שם')} ${quoteMark}</div>
+      <div class="cust-meta">${l.phone?esc(l.phone):'ללא טלפון'}</div>
+    </div>
+    <div class="cell"><span class="cell-label">יעד:</span>${l.destination?`<b>${esc(l.destination)}</b>`:'—'}${datesStr?` · ${datesStr}`:''}</div>
+    <div class="cell"><span class="cell-label">מקור:</span>${l.source?`<span class="src-chip">${esc(l.source)}</span>`:'—'}</div>
+    <div class="cell"><span class="cell-label">סטטוס:</span><span class="badge ${st.cls}"><span class="dot"></span>${st.label}</span></div>
+    <div class="cell"><span class="cell-label">חזרה:</span>${followHTML}</div>
+    <div class="row-actions" data-noopen>
+      ${l.phone?`<button class="btn-icon" title="שלח WhatsApp" data-act="wa" data-id="${l.id}" style="background:#25D366;color:#fff;border-color:#25D366">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.15-1.7-.84-2-.94-.26-.1-.45-.14-.64.15-.19.28-.73.94-.9 1.13-.16.19-.33.21-.62.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.64-2.04-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.08-.15-.64-1.55-.88-2.12-.23-.55-.47-.48-.64-.49h-.55c-.19 0-.5.07-.76.36-.26.29-1 .98-1 2.38s1.02 2.76 1.17 2.95c.15.19 2.02 3.08 4.9 4.32.68.29 1.22.47 1.63.6.69.22 1.31.19 1.8.11.55-.08 1.7-.69 1.94-1.36.24-.67.24-1.24.17-1.36-.07-.12-.26-.19-.55-.34z M12 2a10 10 0 0 0-8.6 15.05L2 22l5.05-1.32A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3 .78.8-2.92-.2-.31A8.2 8.2 0 1 1 12 20.2z"/></svg></button>`:''}
+      <button class="btn-icon" title="צור הצעת מחיר" data-act="quote" data-id="${l.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></button>
+      <div class="menu-wrap">
+        <button class="btn-icon" title="עוד" data-act="menu" data-id="${l.id}"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>
+        <div class="menu" data-menu="${l.id}">
+          <button data-act="edit" data-id="${l.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>עריכה</button>
+          <button data-act="view" data-id="${l.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>פרטים מלאים</button>
+          <div class="menu-sep"></div>
+          <button class="danger" data-act="delete" data-id="${l.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>מחיקה</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function bindRows(root){
+  $$('.lead-row',root).forEach(row=>row.addEventListener('click',e=>{
+    if(e.target.closest('[data-noopen]')) return;
+    openDetail(row.dataset.id);
+  }));
+  $$('[data-act]',root).forEach(btn=>btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const id=btn.dataset.id,act=btn.dataset.act;
+    if(act==='wa') openWhatsApp(id);
+    else if(act==='quote') openQuoteForm(id);
+    else if(act==='edit') openLeadForm(id);
+    else if(act==='view') openDetail(id);
+    else if(act==='delete') confirmDelete(id);
+    else if(act==='menu') toggleMenu(id);
+  }));
+}
+function toggleMenu(id){
+  const menu=$(`.menu[data-menu="${id}"]`); const open=menu.classList.contains('open');
+  $$('.menu.open').forEach(m=>m.classList.remove('open'));
+  if(!open) menu.classList.add('open');
+}
+document.addEventListener('click',e=>{ if(!e.target.closest('.menu-wrap')) $$('.menu.open').forEach(m=>m.classList.remove('open')); });
+
+/* ============================================================
+   9. LEAD DETAIL DRAWER
+   ============================================================ */
+function openDetail(id){
+  const l=DATA.leads.find(x=>x.id===id); if(!l) return;
+  const st=statusById(l.status); const f=followState(l);
+  let followBadge='';
+  if(f.kind==='overdue') followBadge=`<span class="badge" style="--c:#DC2626;--cbg:#FDE4E4">חזרה באיחור</span>`;
+  else if(f.kind==='today') followBadge=`<span class="badge" style="--c:#0C7A72;--cbg:var(--accent-soft)">לחזור היום</span>`;
+
+  const field=(k,v,full)=>`<div class="dfield${full?' full':''}"><div class="k">${k}</div><div class="v ${v?'':'empty-v'}">${v?esc(v):'—'}</div></div>`;
+  const dates=[l.dateFrom,l.dateTo].filter(Boolean).map(fmtDate).join(' – ');
+
+  const d=$('#drawer');
+  d.innerHTML=`
+    <div class="drawer-head">
+      <div>
+        <h3>${esc(l.name||'ללא שם')}</h3>
+        <div class="ph">${l.phone?esc(l.phone):'ללא טלפון'}</div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge ${st.cls}"><span class="dot"></span>${st.label}</span>${followBadge}
+          ${l.quoteSent?`<span class="badge" style="--c:#7C3AED;--cbg:#F0E9FE">נשלחה הצעה</span>`:''}
+        </div>
+      </div>
+      <button class="x-btn" id="drawer-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="drawer-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${l.phone?`<button class="btn btn-wa btn-sm" id="d-wa"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M12 2a10 10 0 0 0-8.6 15.05L2 22l5.05-1.32A10 10 0 1 0 12 2z"/></svg>WhatsApp</button>`:''}
+        <button class="btn btn-ghost btn-sm" id="d-quote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>הצעת מחיר</button>
+      </div>
+      <div style="margin-top:20px">
+        <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:7px">שינוי סטטוס מהיר</div>
+        <div class="select-wrap" style="display:block">
+          <select id="d-status" style="width:100%">${STATUSES.map(s=>`<option value="${s.id}" ${l.status===s.id?'selected':''}>${s.label}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="detail-grid">
+        ${field('יעד',l.destination)}
+        ${field('תאריכי נסיעה',dates)}
+        ${field('מספר נוסעים',l.pax)}
+        ${field('תקציב',l.budget?fmtMoney(l.budget):'')}
+        ${field('מקור הליד',l.source)}
+        ${field('תאריך לחזרה',l.followUp?fmtDate(l.followUp):'')}
+        ${l.status==='won'?field('סכום העסקה',l.dealValue?fmtMoney(l.dealValue):''):''}
+        ${field('הערות',l.notes,true)}
+      </div>
+      <div style="margin-top:16px;font-size:12px;color:var(--muted)">
+        נוצר: ${fmtDate((l.createdAt||'').slice(0,10))}${l.quoteCount?` · הצעות שנוצרו: ${l.quoteCount}`:''}${l.lastQuoteSentAt?` · הצעה אחרונה: ${fmtDateTime(l.lastQuoteSentAt)}`:''}
+      </div>
+    </div>
+    <div class="drawer-foot">
+      <button class="btn btn-primary btn-sm" id="d-edit" style="flex:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>עריכת ליד</button>
+      <button class="btn btn-ghost btn-sm" id="d-del"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+    </div>`;
+  openOverlay(); d.classList.add('show');
+  $('#drawer-x').onclick=closeAll;
+  if($('#d-wa')) $('#d-wa').onclick=()=>openWhatsApp(id);
+  $('#d-quote').onclick=()=>{ closeAll(); openQuoteForm(id); };
+  $('#d-edit').onclick=()=>{ closeAll(); openLeadForm(id); };
+  $('#d-del').onclick=()=>{ closeAll(); confirmDelete(id); };
+  $('#d-status').onchange=e=>{
+    const ns=e.target.value;
+    l.status=ns; l.updatedAt=new Date().toISOString(); save(); refreshCounts();
+    if(ns==='won' && !l.dealValue){ promptDealValue(l,()=>{ openDetail(id); render(); }); }
+    else { toast('הסטטוס עודכן'); openDetail(id); render(); }
+  };
+}
+
+/* ============================================================
+   10. DEAL VALUE PROMPT (on close)
+   ============================================================ */
+function promptDealValue(l,after){
+  const box=$('#modal-box'); box.classList.add('narrow');
+  box.innerHTML=`
+    <div class="modal-head"><h3>סכום העסקה</h3>
+      <button class="x-btn" id="m-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:15px;margin-bottom:14px">מזל טוב על סגירת העסקה! מה שווי העסקה של <b>${esc(l.name||'הלקוח')}</b>?</p>
+      <div class="field"><label>סכום העסקה (₪)</label><input id="deal-val" inputmode="numeric" placeholder="12,500" value="${esc(l.dealValue||'')}"></div>
+      <p class="hint" style="margin-top:8px">אופציונלי — אבל מומלץ, כדי לראות כמה כסף נסגר בעסקאות.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-accent" id="deal-save">שמור</button>
+      <button class="btn btn-ghost" id="deal-skip">דלג</button>
+    </div>`;
+  openModal();
+  $('#deal-val').focus();
+  const done=()=>{ closeAll(); after&&after(); };
+  $('#m-x').onclick=$('#deal-skip').onclick=done;
+  $('#deal-save').onclick=()=>{
+    l.dealValue=$('#deal-val').value.trim(); l.updatedAt=new Date().toISOString();
+    save(); toast('סכום העסקה נשמר'); done();
+  };
+}
+
+/* ============================================================
+   11. LEAD FORM (add / edit)
+   ============================================================ */
+function openLeadForm(id){
+  const editing=!!id;
+  const l=editing?DATA.leads.find(x=>x.id===id):{};
+  const box=$('#modal-box'); box.classList.remove('narrow');
+  box.innerHTML=`
+    <div class="modal-head"><h3>${editing?'עריכת ליד':'ליד חדש'}</h3>
+      <button class="x-btn" id="m-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>שם הלקוח <span class="req">*</span></label><input id="fld-name" value="${esc(l.name||'')}" placeholder="לדוגמה: משפחת כהן"></div>
+        <div class="field"><label>מספר טלפון <span class="req">*</span></label><input id="fld-phone" value="${esc(l.phone||'')}" placeholder="050-0000000" inputmode="tel"></div>
+        <div class="field"><label>יעד</label><input id="fld-dest" value="${esc(l.destination||'')}" placeholder="פאפוס, דובאי…"></div>
+        <div class="field"><label>מקור הליד</label><select id="fld-source"><option value="">בחר מקור</option>${SOURCES.map(s=>`<option ${l.source===s?'selected':''}>${s}</option>`).join('')}</select></div>
+        <div class="field"><label>תאריך יציאה</label><input id="fld-from" type="date" value="${esc(l.dateFrom||'')}"></div>
+        <div class="field"><label>תאריך חזרה</label><input id="fld-to" type="date" value="${esc(l.dateTo||'')}"></div>
+        <div class="field"><label>מספר נוסעים</label><input id="fld-pax" value="${esc(l.pax||'')}" placeholder="2 מבוגרים + 2 ילדים"></div>
+        <div class="field"><label>תקציב</label><input id="fld-budget" value="${esc(l.budget||'')}" placeholder="10,000" inputmode="numeric"></div>
+        <div class="field"><label>סטטוס</label><select id="fld-status">${STATUSES.map(s=>`<option value="${s.id}" ${((l.status||'new')===s.id)?'selected':''}>${s.label}</option>`).join('')}</select></div>
+        <div class="field" id="fld-deal-wrap" style="${(l.status==='won')?'':'display:none'}"><label>סכום העסקה</label><input id="fld-deal" value="${esc(l.dealValue||'')}" inputmode="numeric" placeholder="12,500"></div>
+        <div class="field"><label>תאריך לחזרה ללקוח</label><input id="fld-follow" type="date" value="${esc(l.followUp||'')}"></div>
+        <div class="field full"><label>הערות</label><textarea id="fld-notes" placeholder="פרטים נוספים על הבקשה של הלקוח…">${esc(l.notes||'')}</textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-accent" id="m-save">${editing?'שמור שינויים':'הוסף ליד'}</button>
+      <button class="btn btn-ghost" id="m-cancel">ביטול</button>
+    </div>`;
+  openModal();
+  $('#m-x').onclick=$('#m-cancel').onclick=closeAll;
+  $('#fld-name').focus();
+  $('#fld-status').addEventListener('change',e=>{ $('#fld-deal-wrap').style.display=e.target.value==='won'?'':'none'; });
+  $('#m-save').onclick=()=>{
+    const name=$('#fld-name').value.trim(), phone=$('#fld-phone').value.trim();
+    if(!name){ toast('נא להזין שם לקוח','warn'); $('#fld-name').focus(); return; }
+    if(!phone){ toast('נא להזין מספר טלפון','warn'); $('#fld-phone').focus(); return; }
+    const status=$('#fld-status').value;
+    const payload={
+      name,phone,
+      destination:$('#fld-dest').value.trim(),
+      source:$('#fld-source').value,
+      dateFrom:$('#fld-from').value,
+      dateTo:$('#fld-to').value,
+      pax:$('#fld-pax').value.trim(),
+      budget:$('#fld-budget').value.trim(),
+      status,
+      dealValue:(status==='won')?$('#fld-deal').value.trim():(editing?(l.dealValue||''):''),
+      followUp:$('#fld-follow').value,
+      notes:$('#fld-notes').value.trim(),
+    };
+    if(editing){ Object.assign(l,payload,{updatedAt:new Date().toISOString()}); toast('השינויים נשמרו'); }
+    else { DATA.leads.push(newLead(payload)); toast('ליד נוסף בהצלחה'); }
+    save(); closeAll(); render();
+  };
+}
+
+/* ============================================================
+   12. DELETE + RESTORE
+   ============================================================ */
+function confirmDelete(id){
+  const l=DATA.leads.find(x=>x.id===id); if(!l) return;
+  const box=$('#modal-box'); box.classList.add('narrow');
+  box.innerHTML=`
+    <div class="modal-head"><h3>מחיקת ליד</h3>
+      <button class="x-btn" id="m-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:15.5px">האם למחוק את הליד של <b>${esc(l.name||'ללא שם')}</b>?</p>
+      <p class="hint" style="margin-top:8px">הליד יעבור ל"נמחקו לאחרונה" ותוכל לשחזר אותו משם.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="m-del">מחיקה</button>
+      <button class="btn btn-ghost" id="m-cancel">ביטול</button>
+    </div>`;
+  openModal();
+  $('#m-x').onclick=$('#m-cancel').onclick=closeAll;
+  $('#m-del').onclick=()=>{
+    const i=DATA.leads.findIndex(x=>x.id===id);
+    if(i>-1){ const [r]=DATA.leads.splice(i,1); r.deletedAt=new Date().toISOString(); DATA.deletedLeads.unshift(r); save(); toast('ליד נמחק'); closeAll(); render(); }
+  };
+}
+function renderDeleted(c){
+  const list=DATA.deletedLeads;
+  if(list.length===0){
+    c.innerHTML=`<div class="empty">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></div>
+      <h3>אין לידים שנמחקו</h3><p>לידים שתמחק יופיעו כאן ותוכל לשחזר אותם.</p></div>`;
+    return;
+  }
+  c.innerHTML=`<div class="lead-list">${list.map(l=>{
+    const st=statusById(l.status);
+    return `<div class="lead-row" style="cursor:default;grid-template-columns:1.6fr 1fr 1fr auto">
+      <div class="cust"><div class="cust-name">${esc(l.name||'ללא שם')}</div><div class="cust-meta">${l.phone?esc(l.phone):'ללא טלפון'}</div></div>
+      <div class="cell">${l.destination?`<b>${esc(l.destination)}</b>`:'—'}</div>
+      <div class="cell"><span class="badge ${st.cls}"><span class="dot"></span>${st.label}</span></div>
+      <div class="row-actions">
+        <button class="btn btn-ghost btn-sm" data-restore="${l.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>שחזר</button>
+        <button class="btn-icon" data-purge="${l.id}" title="מחק לצמיתות" style="color:#DC2626"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+      </div></div>`;
+  }).join('')}</div>`;
+  $$('[data-restore]',c).forEach(b=>b.onclick=()=>{ const id=b.dataset.restore,i=DATA.deletedLeads.findIndex(x=>x.id===id); if(i>-1){ const [r]=DATA.deletedLeads.splice(i,1); delete r.deletedAt; DATA.leads.push(r); save(); toast('הליד שוחזר'); render(); } });
+  $$('[data-purge]',c).forEach(b=>b.onclick=()=>{ const id=b.dataset.purge,i=DATA.deletedLeads.findIndex(x=>x.id===id); if(i>-1){ DATA.deletedLeads.splice(i,1); save(); toast('נמחק לצמיתות','warn'); render(); } });
+}
+
+/* ============================================================
+   13. WHATSAPP
+   ============================================================ */
+function openWhatsApp(id){
+  const l=DATA.leads.find(x=>x.id===id); if(!l) return;
+  const num=waNumber(l.phone);
+  if(!num){ toast('אין מספר טלפון תקין','warn'); return; }
+  window.open(`https://wa.me/${num}`,'_blank');
+}
+
+/* ============================================================
+   14. QUOTE GENERATOR — flexible accommodation
+   ============================================================ */
+function openQuoteForm(id){
+  const l=DATA.leads.find(x=>x.id===id); if(!l) return;
+  const q=l.quote||{};
+  const box=$('#modal-box'); box.classList.remove('narrow');
+  const dates=q.dates || [l.dateFrom,l.dateTo].filter(Boolean).map(fmtShort).join(' – ');
+  const accType=q.accommodationType||'hotel';
+  box.innerHTML=`
+    <div class="modal-head"><h3>הצעת מחיר ל-${esc(l.name||'לקוח')}</h3>
+      <button class="x-btn" id="m-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>יעד</label><input id="q-dest" value="${esc(q.dest||l.destination||'')}"></div>
+        <div class="field"><label>סוג אירוח</label>
+          <select id="q-acctype">${ACC_TYPES.map(a=>`<option value="${a.id}" ${accType===a.id?'selected':''}>${a.label}</option>`).join('')}</select>
+        </div>
+        <div class="field full" id="q-acctype-other-wrap" style="display:none"><label>פירוט סוג האירוח</label><input id="q-acctype-other" value="${esc(q.accommodationTypeOther||'')}" placeholder="לדוגמה: בקתת עץ, אכסניה…"></div>
+        <div class="field" id="q-accname-wrap"><label>שם מקום האירוח</label><input id="q-accname" value="${esc(q.accommodationName||'')}" placeholder="Leonardo Plaza / Sunset Villa…"></div>
+        <div class="field" id="q-stars-wrap"><label>דירוג כוכבים</label>
+          <select id="q-stars"><option value="">—</option>${[1,2,3,4,5].map(s=>{const v=`${s} ${s===1?'כוכב':'כוכבים'}`;return `<option value="${v}" ${q.stars===v?'selected':''}>${v}</option>`;}).join('')}</select>
+        </div>
+        <div class="field" id="q-accdesc-wrap"><label>רמת אירוח / תיאור</label>
+          <input id="q-accdesc" list="acc-desc-list" value="${esc(q.accommodationDescription||'')}" placeholder="יוקרתי, מול הים…">
+          <datalist id="acc-desc-list">${ACC_DESC_SUGGEST.map(s=>`<option value="${esc(s)}">`).join('')}</datalist>
+        </div>
+        <div class="field"><label>תאריכים</label><input id="q-dates" value="${esc(dates)}" placeholder="1–4 באוקטובר"></div>
+        <div class="field"><label>בסיס אירוח</label>
+          <select id="q-board"><option value="">—</option>${['ללא ארוחות','ארוחת בוקר','חצי פנסיון','פנסיון מלא','הכל כלול'].map(o=>`<option ${q.board===o?'selected':''}>${o}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>טיסת הלוך</label><input id="q-out" value="${esc(q.flightOut||'')}" placeholder="ישירה / שעה"></div>
+        <div class="field"><label>טיסת חזור</label><input id="q-back" value="${esc(q.flightBack||'')}" placeholder="ישירה / שעה"></div>
+        <div class="field"><label>חברת תעופה</label><input id="q-airline" value="${esc(q.airline||'')}" placeholder="אל על, ויזאייר…"></div>
+        <div class="field"><label>מספר נוסעים</label><input id="q-pax" value="${esc(q.pax||l.pax||'')}" placeholder="2 מבוגרים + ילד"></div>
+        <div class="field"><label>כבודה</label><input id="q-bag" value="${esc(q.baggage||'')}" placeholder="20 ק״ג לנוסע"></div>
+        <div class="field"><label>מחיר כולל</label><input id="q-price" value="${esc(q.price||l.budget||'')}" placeholder="10,000" inputmode="numeric"></div>
+        <div class="field full"><label>הערות</label><textarea id="q-notes" placeholder="הערות נוספות להצעה…">${esc(q.notes||'')}</textarea></div>
+      </div>
+      <div style="margin-top:20px"><div class="wa-preview" id="q-preview"></div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-wa" id="q-send"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M12 2a10 10 0 0 0-8.6 15.05L2 22l5.05-1.32A10 10 0 1 0 12 2z"/></svg>שלח ב-WhatsApp</button>
+      <button class="btn btn-ghost" id="q-copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>העתק הודעה</button>
+    </div>`;
+  openModal();
+  $('#m-x').onclick=closeAll;
+  const refresh=()=>$('#q-preview').textContent=buildQuoteText();
+  const updateAcc=()=>{
+    const type=$('#q-acctype').value, meta=accMeta(type), isNone=type==='none';
+    $('#q-acctype-other-wrap').style.display = type==='other'?'':'none';
+    $('#q-accname-wrap').style.display = isNone?'none':'';
+    $('#q-stars-wrap').style.display = meta.stars?'':'none';
+    $('#q-accdesc-wrap').style.display = (!meta.stars&&!isNone)?'':'none';
+    refresh();
+  };
+  ['q-dest','q-acctype-other','q-accname','q-stars','q-accdesc','q-dates','q-board','q-out','q-back','q-airline','q-pax','q-bag','q-price','q-notes']
+    .forEach(idf=>$('#'+idf).addEventListener('input',refresh));
+  $('#q-acctype').addEventListener('change',updateAcc);
+  updateAcc();
+
+  $('#q-copy').onclick=async()=>{
+    const txt=buildQuoteText();
+    try{ await navigator.clipboard.writeText(txt); }catch(e){ fallbackCopy(txt); }
+    markQuoteSent(l); toast('הצעת המחיר הועתקה');
+  };
+  $('#q-send').onclick=()=>{
+    const num=waNumber(l.phone), txt=encodeURIComponent(buildQuoteText());
+    window.open(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`,'_blank');
+    markQuoteSent(l); toast('נפתחה שיחת WhatsApp');
+  };
+}
+
+function buildQuoteText(){
+  const g=id=>($('#'+id)?.value||'').trim();
+  const dest=g('q-dest'), accType=g('q-acctype'), accOther=g('q-acctype-other'),
+        accName=g('q-accname'), stars=g('q-stars'), accDesc=g('q-accdesc'),
+        dates=g('q-dates'), board=g('q-board'), out=g('q-out'), back=g('q-back'),
+        airline=g('q-airline'), pax=g('q-pax'), bag=g('q-bag'), price=g('q-price'), notes=g('q-notes');
+  const L=[];
+  L.push(`✈️ הצעת חופשה${dest?' ל'+dest:''}`);
+  L.push('');
+  if(dates) L.push(`📅 תאריכים: ${dates}`);
+  if(pax)   L.push(`👨‍👩‍👧‍👦 הרכב: ${pax}`);
+  if(accType!=='none'){
+    const meta=accMeta(accType);
+    const label=(accType==='other')?(accOther||'אירוח'):meta.label;
+    if(accName) L.push(`${meta.emoji} ${label}: ${accName}`.trim());
+    else        L.push(`${meta.emoji} ${label}`.trim());
+    if(meta.stars && stars) L.push(`⭐ ${stars}`);
+    if(!meta.stars && accDesc) L.push(`📍 ${accDesc}`);
+  }
+  if(board) L.push(`🍽️ ${board}`);
+  if(airline||out||back){
+    let fl='✈️ טיסות'; if(airline) fl+=` · ${airline}`;
+    L.push(fl);
+    if(out)  L.push(`   הלוך: ${out}`);
+    if(back) L.push(`   חזור: ${back}`);
+  }
+  if(bag)   L.push(`🧳 כבודה: ${bag}`);
+  if(price) L.push(`💰 מחיר כולל: ${fmtMoney(price)}`);
+  if(notes){ L.push(''); L.push(notes); }
+  L.push('');
+  L.push('לפרטים ושאלות אני כאן 😊');
+  const sig=DATA.settings.quoteName||DATA.settings.agentName||DATA.settings.businessName;
+  if(sig) L.push(sig);
+  return L.join('\n');
+}
+
+/* Persist quote fields + count uniquely */
+function saveQuoteData(l){
+  const g=id=>($('#'+id)?.value||'').trim();
+  l.quote={
+    accommodationType:g('q-acctype'),
+    accommodationTypeOther:g('q-acctype-other'),
+    accommodationName:g('q-accname'),
+    stars:g('q-stars'),
+    accommodationDescription:g('q-accdesc'),
+    dest:g('q-dest'), dates:g('q-dates'), board:g('q-board'),
+    flightOut:g('q-out'), flightBack:g('q-back'), airline:g('q-airline'),
+    pax:g('q-pax'), baggage:g('q-bag'), price:g('q-price'), notes:g('q-notes')
+  };
+}
+function markQuoteSent(l){
+  saveQuoteData(l);
+  l.quoteCount=(l.quoteCount||0)+1;          /* how many times a quote was created/sent */
+  l.lastQuoteSentAt=new Date().toISOString();
+  if(!l.quoteSent) l.quoteSent=true;         /* unique flag — counted once in the dashboard */
+  if(l.status==='new'||l.status==='active'){ l.status='quote'; l.updatedAt=new Date().toISOString(); }
+  save(); refreshCounts();
+}
+function fallbackCopy(txt){
+  const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} ta.remove();
+}
+
+/* ============================================================
+   15. DASHBOARD
+   ============================================================ */
+function renderDashboard(c){
+  const s=computeStats();
+  const R=52,C=2*Math.PI*R,off=C*(1-s.rate/100);
+  const counts={}; STATUSES.forEach(st=>counts[st.id]=DATA.leads.filter(l=>l.status===st.id).length);
+  const maxCount=Math.max(1,...Object.values(counts));
+
+  c.innerHTML=`
+    <div class="kpi-grid">
+      ${statCard('סה"כ לידים',s.total,'users')}
+      ${statCard('בטיפול',s.active,'activity')}
+      ${statCard('עסקאות שנסגרו',s.won,'check')}
+      ${rateCard(s.rate,s.decided)}
+      ${statCard('הצעות שנשלחו',s.quotesSent,'send')}
+      ${moneyCard('סך עסקאות שנסגרו',s.wonValue)}
+    </div>
+
+    <div class="section-title">תמונת מצב</div>
+    <div class="dash-grid">
+      <div class="gauge-card">
+        <div class="gauge">
+          <svg width="132" height="132" viewBox="0 0 132 132">
+            <circle cx="66" cy="66" r="${R}" fill="none" stroke="#E8EEF2" stroke-width="13"/>
+            <circle cx="66" cy="66" r="${R}" fill="none" stroke="var(--accent)" stroke-width="13" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"/>
+          </svg>
+          <div class="num">${s.rate}%</div>
+        </div>
+        <div class="gauge-info">
+          <h4>אחוז הצלחה</h4>
+          <p>מתוך <b>${s.decided}</b> לידים שהגיעו להחלטה,<br><b>${s.won}</b> נסגרו בהצלחה ו-<b>${s.lost}</b> לא נסגרו.</p>
+        </div>
+      </div>
+      <div class="status-break">
+        <h4>פילוח לפי סטטוס</h4>
+        ${STATUSES.map(st=>{ const n=counts[st.id],w=Math.round(n/maxCount*100);
+          return `<div class="sbar"><div class="sbar-top"><span>${st.label}</span><span style="font-weight:600">${n}</span></div>
+          <div class="sbar-track"><div class="sbar-fill ${st.cls}" style="width:${n?w:0}%;background:var(--c)"></div></div></div>`;
+        }).join('')}
+      </div>
+    </div>
+    ${renderFollowupsPanel()}`;
+  bindFollowupPanel(c);
+}
+function renderFollowupsPanel(){
+  const due=DATA.leads.filter(l=>{const f=followState(l);return f.kind==='overdue'||f.kind==='today';}).sort((a,b)=>new Date(a.followUp)-new Date(b.followUp));
+  if(due.length===0) return `<div class="section-title">צריך לחזור אליהם היום</div>
+    <div class="panel" style="max-width:none;color:var(--muted)">אין לידים שדורשים חזרה כרגע. כל הכבוד — אתה מעודכן! 🎯</div>`;
+  return `<div class="section-title">צריך לחזור אליהם — ${due.length}</div>
+    <div class="lead-list">${due.map(l=>{
+      const f=followState(l);
+      const tag=f.kind==='overdue'?`<span class="tag" style="background:#FDE4E4;color:#DC2626;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px">באיחור</span>`:`<span class="tag" style="background:var(--accent-soft);color:#0C7A72;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px">היום</span>`;
+      return `<div class="lead-row ${f.kind==='overdue'?'overdue':'due-today'}" data-fu="${l.id}" style="grid-template-columns:1.6fr 1fr 1fr auto">
+        <div class="cust"><div class="cust-name">${esc(l.name||'ללא שם')} ${tag}</div><div class="cust-meta">${l.phone?esc(l.phone):''}</div></div>
+        <div class="cell">${l.destination?`<b>${esc(l.destination)}</b>`:'—'}</div>
+        <div class="cell">חזרה: ${fmtDate(l.followUp)}</div>
+        <div class="row-actions">${l.phone?`<button class="btn btn-wa btn-sm" data-fuwa="${l.id}"><svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M12 2a10 10 0 0 0-8.6 15.05L2 22l5.05-1.32A10 10 0 1 0 12 2z"/></svg>WhatsApp</button>`:''}</div>
+      </div>`;
+    }).join('')}</div>`;
+}
+function bindFollowupPanel(c){
+  $$('[data-fu]',c).forEach(r=>r.addEventListener('click',e=>{ if(e.target.closest('[data-fuwa]')) return; openDetail(r.dataset.fu); }));
+  $$('[data-fuwa]',c).forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openWhatsApp(b.dataset.fuwa);}));
+}
+
+/* ============================================================
+   16. BACKUP / RESTORE
+   ============================================================ */
+function renderBackup(c){
+  const lb=DATA.meta.lastBackupAt;
+  c.innerHTML=`
+    <div class="info-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div>המידע נשמר בדפדפן במחשב הזה בלבד. אם תחליף מחשב, תנקה את נתוני הדפדפן או תאבד גישה למחשב — המידע עלול להימחק. מומלץ לבצע גיבוי מדי פעם.</div>
+    </div>
+    <div class="backup-meta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      גיבוי אחרון: ${lb?fmtDateTime(lb):'טרם בוצע גיבוי'}
+    </div>
+    <div class="panel">
+      <h3>ייצוא גיבוי</h3>
+      <p class="desc">שמור את כל הלידים, ההגדרות והנתונים לקובץ JSON יחיד במחשב שלך.</p>
+      <button class="btn btn-primary" id="bk-export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>ייצוא גיבוי (JSON)</button>
+    </div>
+    <div class="panel">
+      <h3>ייבוא גיבוי</h3>
+      <p class="desc">בחר קובץ JSON ששמרת בעבר כדי לשחזר את הנתונים. שים לב — פעולה זו תחליף את הנתונים הקיימים כרגע.</p>
+      <input type="file" id="bk-file" accept="application/json,.json" style="display:none">
+      <button class="btn btn-ghost" id="bk-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>ייבוא גיבוי מקובץ</button>
+    </div>`;
+  $('#bk-export').onclick=exportBackup;
+  $('#bk-import').onclick=()=>$('#bk-file').click();
+  $('#bk-file').onchange=importBackup;
+}
+function exportBackup(){
+  DATA.meta.lastBackupAt=new Date().toISOString(); save();
+  const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=`tripdesk-backup-${todayISO()}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  toast('הגיבוי יוצא בהצלחה'); renderBackup($('#content'));
+}
+function importBackup(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{ DATA=migrate(JSON.parse(ev.target.result)); save(); toast('הגיבוי יובא בהצלחה'); setView('leads'); }
+    catch(err){ toast('הקובץ אינו תקין','warn'); }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   17. SETTINGS
+   ============================================================ */
+function renderSettings(c){
+  const s=DATA.settings;
+  c.innerHTML=`
+    <div class="panel">
+      <h3>פרטי הסוכן והעסק</h3>
+      <p class="desc">הפרטים נשמרים במכשיר וישמשו אוטומטית ליצירת הצעות מחיר וחתימה.</p>
+      <div class="form-grid">
+        <div class="field"><label>שם הסוכן</label><input id="set-agent" value="${esc(s.agentName||'')}" placeholder="ישראל ישראלי"></div>
+        <div class="field"><label>שם העסק</label><input id="set-biz" value="${esc(s.businessName||'')}" placeholder="טיולי החלום"></div>
+        <div class="field"><label>מספר WhatsApp</label><input id="set-wa" value="${esc(s.whatsapp||'')}" placeholder="050-0000000" inputmode="tel"></div>
+        <div class="field"><label>שם שיופיע בהצעות מחיר</label><input id="set-quote" value="${esc(s.quoteName||'')}" placeholder="ישראל · טיולי החלום"></div>
+      </div>
+      <div style="margin-top:20px"><button class="btn btn-accent" id="set-save">שמור הגדרות</button></div>
+    </div>`;
+  $('#set-save').onclick=()=>{
+    DATA.settings={agentName:$('#set-agent').value.trim(),businessName:$('#set-biz').value.trim(),whatsapp:$('#set-wa').value.trim(),quoteName:$('#set-quote').value.trim()};
+    save(); refreshCounts(); toast('ההגדרות נשמרו');
+  };
+}
+
+/* ============================================================
+   18. OVERLAY / MODAL CONTROL
+   ============================================================ */
+function openOverlay(){ $('#overlay').classList.add('show'); }
+function openModal(){ openOverlay(); $('#modal').classList.add('show'); }
+function closeAll(){ $('#overlay').classList.remove('show'); $('#modal').classList.remove('show'); $('#drawer').classList.remove('show'); }
+$('#overlay').addEventListener('click',closeAll);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAll(); });
+
+/* ============================================================
+   19. INIT
+   ============================================================ */
+$('#btn-new-top').addEventListener('click',()=>openLeadForm());
+$$('#nav .nav-item').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+load();
+setView('leads');
+</script>
+</body>
+</html>
