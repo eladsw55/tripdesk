@@ -159,10 +159,10 @@ h1,h2,h3,h4{font-family:var(--font-head);font-weight:600;line-height:1.25}
 .select-wrap::after{content:"";position:absolute;left:13px;top:50%;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
 
 /* LEADS */
-.lead-head{display:grid;grid-template-columns:1.6fr 1.1fr .9fr 1.15fr 1fr auto;gap:14px;padding:0 18px 10px;color:var(--muted);font-size:12.5px;font-weight:600}
+.lead-head{display:grid;grid-template-columns:1.6fr 1.2fr .8fr 1fr 1fr auto;gap:14px;padding:0 18px 10px;color:var(--muted);font-size:12.5px;font-weight:600;align-items:center;text-align:right}
 .lead-list{display:flex;flex-direction:column;gap:10px}
 .lead-row{
-  display:grid;grid-template-columns:1.6fr 1.1fr .9fr 1.15fr 1fr auto;gap:14px;align-items:center;
+  display:grid;grid-template-columns:1.6fr 1.2fr .8fr 1fr 1fr auto;gap:14px;align-items:center;
   background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 18px;
   box-shadow:var(--shadow-sm);cursor:pointer;transition:box-shadow .15s,border-color .15s,transform .08s;position:relative;
 }
@@ -185,7 +185,7 @@ h1,h2,h3,h4{font-family:var(--font-head);font-weight:600;line-height:1.25}
 .follow.today .tag{background:var(--accent-soft);color:#0C7A72}
 .follow .date{color:var(--ink-2)}
 .follow.none{color:var(--muted);font-weight:500}
-.row-actions{display:flex;align-items:center;gap:6px}
+.row-actions{display:flex;align-items:center;gap:6px;justify-content:flex-start}
 .menu-wrap{position:relative}
 .menu{position:absolute;inset-inline-end:0;top:calc(100% + 6px);z-index:30;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;min-width:170px;display:none}
 .menu.open{display:block;animation:pop .12s ease}
@@ -426,7 +426,19 @@ function upgradeLead(l){
   if(!('quoteCount' in l)) l.quoteCount=0;
   if(!('lastQuoteSentAt' in l)) l.lastQuoteSentAt=null;
   if(!('dealValue' in l)) l.dealValue='';
-  if(!l.quote) l.quote={accommodationType:'hotel',accommodationName:'',accommodationDescription:''};
+
+  /* keep legacy hotel fields and map them forward without deleting anything */
+  if(!('accommodationType' in l)) l.accommodationType='hotel';
+  if(!('accommodationName' in l)) l.accommodationName=l.hotel||'';
+  if(!('accommodationDescription' in l)) l.accommodationDescription='';
+  if(!('accommodationStars' in l)) l.accommodationStars=l.stars||'';
+
+  if(!l.quote || typeof l.quote!=='object') l.quote={};
+  if(!('accommodationType' in l.quote)) l.quote.accommodationType=l.accommodationType||'hotel';
+  if(!('accommodationName' in l.quote)) l.quote.accommodationName=l.quote.hotel||l.hotel||l.accommodationName||'';
+  if(!('accommodationDescription' in l.quote)) l.quote.accommodationDescription=l.accommodationDescription||'';
+  if(!('stars' in l.quote)) l.quote.stars=l.quote.accommodationStars||l.stars||l.accommodationStars||'';
+  if(!('board' in l.quote) && l.board) l.quote.board=l.board;
   return l;
 }
 
@@ -439,12 +451,11 @@ function migrate(data){
   data.settings     = Object.assign(defaultData().settings, data.settings||{});
   data.meta         = Object.assign(defaultData().meta, data.meta||{});
 
-  if(data.version < 2){
-    data.leads.forEach(upgradeLead);
-    data.deletedLeads.forEach(upgradeLead);
-    if(!('lastBackupAt' in data.meta)) data.meta.lastBackupAt = null;
-    data.version = 2;
-  }
+  /* run additive migration on every load so partially-upgraded v2 data is also safe */
+  data.leads.forEach(upgradeLead);
+  data.deletedLeads.forEach(upgradeLead);
+  if(!('lastBackupAt' in data.meta)) data.meta.lastBackupAt = null;
+  if(data.version < 2) data.version = 2;
   /* future: if(data.version < 3){ ... ; data.version = 3; } */
 
   data.version = SCHEMA_VERSION;
@@ -463,6 +474,7 @@ function newLead(payload){
   return Object.assign({
     id:uid(), createdAt:new Date().toISOString(),
     quoteSent:false, quoteCount:0, lastQuoteSentAt:null, dealValue:'',
+    accommodationType:'hotel', accommodationName:'', accommodationDescription:'', accommodationStars:'',
     quote:{accommodationType:'hotel',accommodationName:'',accommodationDescription:''}
   }, payload);
 }
@@ -504,11 +516,28 @@ function daysBetween(iso){
   return Math.round((d-t)/86400000);
 }
 function waNumber(phone){
-  let n=(phone||'').replace(/[^\d]/g,'');
+  let n=(phone||'').toString().replace(/\D/g,'');
   if(!n) return '';
   if(n.startsWith('972')) return n;
   if(n.startsWith('0')) return '972'+n.slice(1);
   return n;
+}
+function openWhatsAppUrl(phone,text=''){
+  const num=waNumber(phone);
+  const encoded=text?encodeURIComponent(text):'';
+  const isDesktop=!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  let url;
+  if(isDesktop){
+    url=`https://web.whatsapp.com/send?phone=${num}${encoded?`&text=${encoded}`:''}`;
+  } else {
+    url=num?`https://wa.me/${num}${encoded?`?text=${encoded}`:''}`:`https://wa.me/${encoded?`?text=${encoded}`:''}`;
+  }
+  const w=window.open(url,'_blank');
+  if(!w && isDesktop){
+    const fallback=num?`https://wa.me/${num}${encoded?`?text=${encoded}`:''}`:`https://wa.me/${encoded?`?text=${encoded}`:''}`;
+    window.open(fallback,'_blank');
+  }
+  return !!url;
 }
 function toast(msg, type='ok'){
   const el=document.createElement('div'); el.className='toast '+type;
@@ -686,13 +715,12 @@ function getVisibleLeads(isClosed=false){
   if(!isClosed && filters.status) list=list.filter(l=>l.status===filters.status);
   if(filters.dest) list=list.filter(l=>l.destination===filters.dest);
 
-  const statusOrder={new:0,active:1,quote:2,waiting:3,won:4,lost:5};
+  const statusOrder={new:2,active:3,quote:4,waiting:5,won:6,lost:7};
   const attentionRank=l=>{
     const f=followState(l);
     if(f.kind==='overdue') return 0;
     if(f.kind==='today') return 1;
-    if(['new','active','waiting','quote'].includes(l.status)) return 2;
-    return 3;
+    return statusOrder[l.status] ?? 8;
   };
   list.sort((a,b)=>{
     switch(filters.sort){
@@ -717,7 +745,7 @@ function renderLeadList(c,list,isClosed=false){
     if($('#empty-add')) $('#empty-add').addEventListener('click',()=>openLeadForm());
     return;
   }
-  const head=`<div class="lead-head"><div>לקוח</div><div>יעד ותאריכים</div><div>מקור</div><div>סטטוס</div><div>חזרה / עסקה</div><div></div></div>`;
+  const head=`<div class="lead-head"><div>לקוח</div><div>יעד ותאריכים</div><div>מקור</div><div>סטטוס</div><div>חזרה / עסקה</div><div>פעולות</div></div>`;
   container.innerHTML=head+`<div class="lead-list">${list.map(rowHTML).join('')}</div>`;
   c.appendChild(container);
   bindRows(container);
@@ -743,7 +771,7 @@ function rowHTML(l){
   if(l.status==='won'){
     followHTML = l.dealValue
       ? `<div class="follow today"><span class="tag">עסקה</span><span class="date">${esc(fmtMoney(l.dealValue))}</span></div>`
-      : `<div class="follow none">נסגר</div>`;
+      : `<div class="follow today"><span class="tag">עסקה</span><span class="date">—</span></div>`;
   } else if(f.kind==='overdue') followHTML=`<div class="follow overdue"><span class="tag">באיחור</span><span class="date">${fmtDate(l.followUp)}</span></div>`;
   else if(f.kind==='today') followHTML=`<div class="follow today"><span class="tag">היום</span><span class="date">${fmtDate(l.followUp)}</span></div>`;
   else if(f.kind==='future') followHTML=`<div class="follow"><span class="date">${fmtDate(l.followUp)}</span></div>`;
@@ -877,11 +905,11 @@ function openDetail(id){
 function promptDealValue(l,after){
   const box=$('#modal-box'); box.classList.add('narrow');
   box.innerHTML=`
-    <div class="modal-head"><h3>סכום העסקה</h3>
+    <div class="modal-head"><h3>העסקה נסגרה 🎉</h3>
       <button class="x-btn" id="m-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
-      <p style="font-size:15px;margin-bottom:14px">מזל טוב על סגירת העסקה! מה שווי העסקה של <b>${esc(l.name||'הלקוח')}</b>?</p>
+      <p style="font-size:15px;margin-bottom:14px">מה סכום העסקה של <b>${esc(l.name||'הלקוח')}</b>?</p>
       <div class="field"><label>סכום העסקה (₪)</label><input id="deal-val" inputmode="numeric" placeholder="12,500" value="${esc(l.dealValue||'')}"></div>
       <p class="hint" style="margin-top:8px">אופציונלי — אבל מומלץ, כדי לראות כמה כסף נסגר בעסקאות.</p>
     </div>
@@ -1013,7 +1041,8 @@ function openWhatsApp(id){
   const l=DATA.leads.find(x=>x.id===id); if(!l) return;
   const num=waNumber(l.phone);
   if(!num){ toast('אין מספר טלפון תקין','warn'); return; }
-  window.open(`https://wa.me/${num}`,'_blank');
+  openWhatsAppUrl(l.phone);
+  toast('WhatsApp נפתח');
 }
 
 /* ============================================================
@@ -1070,7 +1099,7 @@ function openQuoteForm(id){
     $('#q-acctype-other-wrap').style.display = type==='other'?'':'none';
     $('#q-accname-wrap').style.display = isNone?'none':'';
     $('#q-stars-wrap').style.display = meta.stars?'':'none';
-    $('#q-accdesc-wrap').style.display = (!meta.stars&&!isNone)?'':'none';
+    $('#q-accdesc-wrap').style.display = isNone?'none':'';
     refresh();
   };
   ['q-dest','q-acctype-other','q-accname','q-stars','q-accdesc','q-dates','q-board','q-out','q-back','q-airline','q-pax','q-bag','q-price','q-notes']
@@ -1081,12 +1110,14 @@ function openQuoteForm(id){
   $('#q-copy').onclick=async()=>{
     const txt=buildQuoteText();
     try{ await navigator.clipboard.writeText(txt); }catch(e){ fallbackCopy(txt); }
-    markQuoteSent(l); toast('הצעת המחיר הועתקה');
+    saveQuoteData(l); save(); toast('הצעת המחיר הועתקה');
   };
   $('#q-send').onclick=()=>{
-    const num=waNumber(l.phone), txt=encodeURIComponent(buildQuoteText());
-    window.open(num?`https://wa.me/${num}?text=${txt}`:`https://wa.me/?text=${txt}`,'_blank');
-    markQuoteSent(l); toast('נפתחה שיחת WhatsApp');
+    const txt=buildQuoteText();
+    if(!waNumber(l.phone)){ toast('אין מספר טלפון תקין','warn'); return; }
+    openWhatsAppUrl(l.phone,txt);
+    markQuoteSent(l);
+    toast('WhatsApp נפתח עם ההודעה המוכנה');
   };
 }
 
@@ -1107,7 +1138,7 @@ function buildQuoteText(){
     if(accName) L.push(`${meta.emoji} ${label}: ${accName}`.trim());
     else        L.push(`${meta.emoji} ${label}`.trim());
     if(meta.stars && stars) L.push(`⭐ ${stars}`);
-    if(!meta.stars && accDesc) L.push(`📍 ${accDesc}`);
+    if(accDesc) L.push(`📍 ${accDesc}`);
   }
   if(board) L.push(`🍽️ ${board}`);
   if(airline||out||back){
@@ -1129,6 +1160,10 @@ function buildQuoteText(){
 /* Persist quote fields + count uniquely */
 function saveQuoteData(l){
   const g=id=>($('#'+id)?.value||'').trim();
+  l.accommodationType=g('q-acctype')||l.accommodationType||'hotel';
+  l.accommodationName=g('q-accname');
+  l.accommodationDescription=g('q-accdesc');
+  l.accommodationStars=g('q-stars');
   l.quote={
     accommodationType:g('q-acctype'),
     accommodationTypeOther:g('q-acctype-other'),
@@ -1227,7 +1262,7 @@ function renderBackup(c){
   c.innerHTML=`
     <div class="info-note">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <div>המידע נשמר בדפדפן במחשב הזה בלבד. אם תחליף מחשב, תנקה את נתוני הדפדפן או תאבד גישה למחשב — המידע עלול להימחק. מומלץ לבצע גיבוי מדי פעם.</div>
+      <div>הנתונים שלך נשמרים בדפדפן במחשב הזה בלבד.<br><br>אם תחליף מחשב, תנקה את נתוני הדפדפן או תאבד גישה למחשב, המידע עלול להימחק.<br><br>מומלץ לבצע גיבוי מדי פעם.</div>
     </div>
     <div class="backup-meta">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
