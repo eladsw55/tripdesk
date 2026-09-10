@@ -1171,7 +1171,7 @@ function buildQuoteText(){
   if(notes){ L.push(''); L.push(notes); }
   L.push('');
   L.push('לפרטים ושאלות אני כאן 😊');
-  const sig=DATA.settings.quoteName||DATA.settings.agentName||DATA.settings.businessName;
+  const sig=[DATA.settings.agentName,DATA.settings.businessName].filter(Boolean).join(' · ');
   if(sig) L.push(sig);
   return L.join('\n');
 }
@@ -1293,18 +1293,12 @@ function renderBackup(c){
       <button class="btn btn-primary" id="bk-export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>ייצוא גיבוי (JSON)</button>
     </div>
     <div class="panel">
-      <h3>ייצוא לאקסל</h3>
-      <p class="desc">הורד את כל הלידים לקובץ CSV מסודר בעברית שנפתח ישירות ב־Excel, כולל סטטוסים, תאריכים, הצעות מחיר וסכומי עסקאות.</p>
-      <button class="btn btn-accent" id="excel-export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m8 13 6 6M14 13l-6 6"/></svg>ייצוא לאקסל</button>
-    </div>
-    <div class="panel">
       <h3>ייבוא גיבוי</h3>
       <p class="desc">בחר קובץ JSON ששמרת בעבר כדי לשחזר את הנתונים. שים לב — פעולה זו תחליף את הנתונים הקיימים כרגע.</p>
       <input type="file" id="bk-file" accept="application/json,.json" style="display:none">
       <button class="btn btn-ghost" id="bk-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>ייבוא גיבוי מקובץ</button>
     </div>`;
   $('#bk-export').onclick=exportBackup;
-  $('#excel-export').onclick=exportExcel;
   $('#bk-import').onclick=()=>$('#bk-file').click();
   $('#bk-file').onchange=importBackup;
 }
@@ -1316,33 +1310,6 @@ function exportBackup(){
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   toast('הגיבוי יוצא בהצלחה'); renderBackup($('#content'));
 }
-function exportExcel(){
-  if(!DATA.leads.length){ toast('אין לידים לייצוא כרגע','info'); return; }
-
-  const headers=['שם לקוח','טלפון','יעד','תאריך יציאה','תאריך חזרה','מקור ליד','סטטוס','תאריך חזרה ללקוח','האם נשלחה הצעת מחיר','מספר הצעות מחיר שנשלחו','תאריך הצעה אחרונה','סכום עסקה','סוג מקום אירוח','שם מקום האירוח','הערות'];
-  const csvCell=v=>`"${String(v??'').replace(/"/g,'""')}"`;
-  const rows=DATA.leads.map(l=>{
-    const q=(l.quote&&typeof l.quote==='object')?l.quote:{};
-    const typeId=q.accommodationType||l.accommodationType||'';
-    const type=typeId?accMeta(typeId).label:'';
-    const accName=q.accommodationName||l.accommodationName||l.hotel||'';
-    return [
-      l.name||'', l.phone||'', l.destination||'', l.dateFrom||'', l.dateTo||'', l.source||'',
-      statusById(l.status).label, l.followUp||'', l.quoteSent?'כן':'לא', Number(l.quoteCount)||0,
-      l.lastQuoteSentAt?fmtDateTime(l.lastQuoteSentAt):'', l.dealValue||'', type, accName, l.notes||''
-    ];
-  });
-
-  /* UTF-8 BOM keeps Hebrew readable in Microsoft Excel. sep=, helps Excel detect columns. */
-  const csv='\uFEFFsep=,\r\n'+[headers,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob), a=document.createElement('a');
-  a.href=url; a.download=`TripDesk-Leads-${todayISO()}.csv`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),500);
-  toast('הקובץ יוצא בהצלחה');
-}
-
 function importBackup(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
@@ -1367,12 +1334,13 @@ function renderSettings(c){
         <div class="field"><label>שם הסוכן</label><input id="set-agent" value="${esc(s.agentName||'')}" placeholder="ישראל ישראלי"></div>
         <div class="field"><label>שם העסק</label><input id="set-biz" value="${esc(s.businessName||'')}" placeholder="טיולי החלום"></div>
         <div class="field"><label>מספר WhatsApp</label><input id="set-wa" value="${esc(s.whatsapp||'')}" placeholder="050-0000000" inputmode="tel"></div>
-        <div class="field"><label>שם שיופיע בהצעות מחיר</label><input id="set-quote" value="${esc(s.quoteName||'')}" placeholder="ישראל · טיולי החלום"></div>
       </div>
       <div style="margin-top:20px"><button class="btn btn-accent" id="set-save">שמור הגדרות</button></div>
     </div>`;
   $('#set-save').onclick=()=>{
-    DATA.settings={agentName:$('#set-agent').value.trim(),businessName:$('#set-biz').value.trim(),whatsapp:$('#set-wa').value.trim(),quoteName:$('#set-quote').value.trim()};
+    DATA.settings.agentName=$('#set-agent').value.trim();
+    DATA.settings.businessName=$('#set-biz').value.trim();
+    DATA.settings.whatsapp=$('#set-wa').value.trim();
     save(); refreshCounts(); toast('ההגדרות נשמרו');
   };
 }
